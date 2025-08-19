@@ -41,13 +41,12 @@
     >
         <a-marker preset="custom" type="pattern" url="./marker.patt">
             <a-video
-                src="./video.mp4"
+                id="myVideo"
+                src="./asset.mp4"
                 width="1.6"
                 height="0.9"
                 position="0 0 0"
                 rotation="-90 0 0"
-                autoplay
-                loop
                 playsinline
                 crossorigin="anonymous"
             ></a-video>
@@ -55,12 +54,28 @@
         <a-entity camera></a-entity>
     </a-scene>
     <script>
-        // Script para remover o loader quando a AR estiver pronta (opcional)
+        // Script para remover o loader e controlar o vídeo
         window.addEventListener('arjs-original-ar-init', function() {
             const loader = document.querySelector('.arjs-loader');
             if (loader) {
                 loader.style.display = 'none';
             }
+        });
+
+        const video = document.getElementById('myVideo');
+        const marker = document.querySelector('a-marker');
+
+        // Quando a RA reconhecer o marcador, o vídeo começa a tocar.
+        marker.addEventListener('markerFound', function() {
+            console.log('Marcador encontrado!');
+            video.play();
+        });
+
+        // Quando a RA perder o marcador, o vídeo pausa e volta ao início.
+        marker.addEventListener('markerLost', function() {
+            console.log('Marcador perdido!');
+            video.pause();
+            video.currentTime = 0;
         });
     </script>
 </body>
