@@ -1,83 +1,111 @@
 <!DOCTYPE html>
-<html>
-<head>
+<html lang="pt-br">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Meu primeiro WebAR com MindAR</title>
+
+    <!-- A-Frame e MindAR (versões fixas para estabilidade) -->
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+
     <style>
-        body { margin: 0; overflow: hidden; }
-        .arjs-loader {
-            height: 100%;
-            width: 100%;
-            position: absolute;
-            top: 0;
-            left: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 99;
-        }
-        .arjs-loader div {
-            text-align: center;
-            font-size: 1.25em;
-            color: white;
-            animation: pulse 1.5s infinite alternate;
-        }
-        @keyframes pulse {
-            0% { opacity: 0.5; }
-            100% { opacity: 1; }
-        }
+      body { margin: 0; overflow: hidden; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+      #unmuteBtn {
+        position: fixed; z-index: 10; left: 12px; top: 12px; padding: 10px 14px; border: 0; border-radius: 10px;
+        background: rgba(0,0,0,.7); color: #fff; font-weight: 600; display: none; cursor: pointer;
+      }
+      #tips { position: fixed; z-index: 10; right: 12px; top: 12px; color: #fff; background: rgba(0,0,0,.35); padding: 8px 12px; border-radius: 10px; font-size: 14px; }
+      .hidden { display: none; }
+      /* Opcional: alerta de permissão de câmera no iOS */
+      #iosHint { position: fixed; inset: 0; display: none; place-items: center; background: rgba(0,0,0,.65); color: #fff; z-index: 20; }
+      #iosHint .card { background:#111; padding:20px; border-radius:12px; max-width: 320px; text-align:center; }
     </style>
-</head>
-<body style="margin: 0; overflow: hidden;">
-    <div class="arjs-loader">
-        <div>Carregando Realidade Aumentada...</div>
-    </div>
+  </head>
+  <body>
+    <button id="unmuteBtn">▶️ Ativar som</button>
+    <div id="tips">Aponte para a foto‑gatilho</div>
+    <div id="iosHint"><div class="card">
+      <h3>Permita acesso à câmera</h3>
+      <p>Se nada aparecer, toque em “Permitir” para liberar a câmera.</p>
+      <button id="closeHint">OK</button>
+    </div></div>
+
+    <!-- Cena AR -->
     <a-scene
-        vr-mode-ui="enabled: false;"
-        renderer="logarithmicDepthBuffer: true;"
-        arjs="sourceType: webcam; detectionMode: mono; patternRatio: 0.9;"
-        embedded
-        gesture-detector
-    >
-        <a-marker preset="custom" type="pattern" url="./marker.patt">
-            <a-video
-                id="myVideo"
-                src="./asset.mp4"
-                width="1.6"
-                height="0.9"
-                position="0 0 0"
-                rotation="-90 0 0"
-                preload="none"
-                playsinline
-                crossorigin="anonymous"
-            ></a-video>
-        </a-marker>
-        <a-entity camera></a-entity>
+      mindar-image="imageTargetSrc: targets/targets.mind; autoStart: true;"
+      color-space="sRGB"
+      renderer="colorManagement: true, physicallyCorrectLights"
+      vr-mode-ui="enabled: false"
+      device-orientation-permission-ui="enabled: false">
+
+      <a-assets>
+        <!-- Seu vídeo. Coloque em assets/video.mp4 -->
+        <video id="video1" src="assets/video.mp4" preload="auto" webkit-playsinline playsinline crossorigin="anonymous"></video>
+        <!-- Opcional: uma imagem para testar como overlay
+        <img id="overlay" src="assets/overlay.png" />-->
+      </a-assets>
+
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+      <!-- Alvo 0: quando a imagem for reconhecida, mostramos o vídeo em cima -->
+      <a-entity id="target0" mindar-image-target="targetIndex: 0">
+        <!-- Ajuste width/height para caber na sua foto. 1 x 0.5625 é ~16:9 -->
+        <a-video id="videoPlane" src="#video1" position="0 0 0" rotation="0 0 0" width="1" height="0.5625"></a-video>
+      </a-entity>
+
+      <!-- Exemplo para um segundo alvo no mesmo arquivo .mind (descomente e use targetIndex: 1)
+      <a-entity id="target1" mindar-image-target="targetIndex: 1">
+        <a-plane src="#overlay" position="0 0 0" width="1" height="1"></a-plane>
+      </a-entity>-->
     </a-scene>
+
     <script>
-        // Script para remover o loader e controlar o vídeo
-        window.addEventListener('arjs-original-ar-init', function() {
-            const loader = document.querySelector('.arjs-loader');
-            if (loader) {
-                loader.style.display = 'none';
-            }
-        });
+      const video = document.querySelector('#video1');
+      const target0 = document.querySelector('#target0');
+      const unmuteBtn = document.querySelector('#unmuteBtn');
+      const iosHint = document.querySelector('#iosHint');
+      const closeHint = document.querySelector('#closeHint');
 
-        const video = document.getElementById('myVideo');
-        const marker = document.querySelector('a-marker');
-        
-        // Quando a RA reconhecer o marcador, o vídeo começa a tocar.
-        marker.addEventListener('markerFound', function() {
-            console.log('Marcador encontrado!');
-            video.play();
-        });
+      // iOS costuma bloquear autoplay com áudio; começamos mudo.
+      video.muted = true;
 
-        // Quando a RA perder o marcador, o vídeo pausa e volta ao início.
-        marker.addEventListener('markerLost', function() {
-            console.log('Marcador perdido!');
-            video.pause();
-            video.currentTime = 0;
-        });
+      // Dicas: quando MindAR estiver pronto / erro de câmera
+      const sceneEl = document.querySelector('a-scene');
+      sceneEl.addEventListener('arReady', () => {
+        // oculta dica de permissão se aparecida
+        iosHint.style.display = 'none';
+      });
+      sceneEl.addEventListener('arError', () => {
+        iosHint.style.display = 'grid';
+      });
+      closeHint?.addEventListener('click', () => iosHint.style.display = 'none');
+
+      // Só toca quando o alvo é encontrado; pausa quando perder
+      target0.addEventListener('targetFound', async () => {
+        try {
+          await video.play();
+        } catch (e) {
+          // Se o navegador bloquear, mostra botão para o usuário iniciar
+          unmuteBtn.style.display = 'inline-block';
+          unmuteBtn.textContent = '▶️ Tocar vídeo';
+        }
+      });
+
+      target0.addEventListener('targetLost', () => {
+        video.pause();
+      });
+
+      // Botão para iniciar/desmutar o vídeo após gesto do usuário
+      unmuteBtn.addEventListener('click', async () => {
+        try {
+          await video.play();
+          video.muted = false; // ativa som após gesto
+          unmuteBtn.style.display = 'none';
+        } catch (e) {
+          console.warn('Falha ao iniciar vídeo:', e);
+        }
+      });
     </script>
-</body>
+  </body>
 </html>
