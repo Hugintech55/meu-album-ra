@@ -1,110 +1,70 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html>
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Meu primeiro WebAR com MindAR</title>
-
-    <!-- A-Frame e MindAR (versões fixas para estabilidade) -->
-    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
-
-    <style>
-      body { margin: 0; overflow: hidden; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
-      #unmuteBtn {
-        position: fixed; z-index: 10; left: 12px; top: 12px; padding: 10px 14px; border: 0; border-radius: 10px;
-        background: rgba(0,0,0,.7); color: #fff; font-weight: 600; display: none; cursor: pointer;
-      }
-      #tips { position: fixed; z-index: 10; right: 12px; top: 12px; color: #fff; background: rgba(0,0,0,.35); padding: 8px 12px; border-radius: 10px; font-size: 14px; }
-      .hidden { display: none; }
-      /* Opcional: alerta de permissão de câmera no iOS */
-      #iosHint { position: fixed; inset: 0; display: none; place-items: center; background: rgba(0,0,0,.65); color: #fff; z-index: 20; }
-      #iosHint .card { background:#111; padding:20px; border-radius:12px; max-width: 320px; text-align:center; }
-    </style>
+    <title>Meu Álbum RA</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <script src="https://cdn.jsdelivr.net/npm/aframe@1.2.0/dist/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image-aframe.prod.js"></script>
   </head>
-  <body>
-    <button id="unmuteBtn">▶️ Ativar som</button>
-    <div id="tips">Aponte para a foto‑gatilho</div>
-    <div id="iosHint"><div class="card">
-      <h3>Permita acesso à câmera</h3>
-      <p>Se nada aparecer, toque em “Permitir” para liberar a câmera.</p>
-      <button id="closeHint">OK</button>
-    </div></div>
-
-    <!-- Cena AR -->
+  <body style="margin: 0; overflow: hidden">
     <a-scene
       mindar-image="imageTargetSrc: targets/targets.mind; autoStart: true;"
       color-space="sRGB"
       renderer="colorManagement: true, physicallyCorrectLights"
       vr-mode-ui="enabled: false"
-      device-orientation-permission-ui="enabled: false">
-
+      device-orientation-permission-ui="enabled: false"
+    >
       <a-assets>
-        <!-- Seu vídeo. Coloque em assets/video.mp4 -->
-        <video id="video1" src="assets/video.mp4" preload="auto" webkit-playsinline playsinline crossorigin="anonymous"></video>
-        <!-- Opcional: uma imagem para testar como overlay
-        <img id="overlay" src="assets/overlay.png" />-->
+        <video id="meu-video" src="assets/video.mp4" preload="auto" webkit-playsinline playsinline></video>
       </a-assets>
 
-      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-
-      <!-- Alvo 0: quando a imagem for reconhecida, mostramos o vídeo em cima -->
-      <a-entity id="target0" mindar-image-target="targetIndex: 0">
-        <!-- Ajuste width/height para caber na sua foto. 1 x 0.5625 é ~16:9 -->
-        <a-video id="videoPlane" src="#video1" position="0 0 0" rotation="0 0 0" width="1" height="0.5625"></a-video>
-      </a-entity>
-
-      <!-- Exemplo para um segundo alvo no mesmo arquivo .mind (descomente e use targetIndex: 1)
-      <a-entity id="target1" mindar-image-target="targetIndex: 1">
-        <a-plane src="#overlay" position="0 0 0" width="1" height="1"></a-plane>
-      </a-entity>-->
+      <!-- Alvo RA -->
+      <a-image-target targetIndex="0">
+        <!-- Ajuste a largura e altura aqui -->
+        <a-video
+          src="#meu-video"
+          position="0 0 0"
+          rotation="0 0 0"
+          width="1.5"
+          height="2.7"
+        ></a-video>
+      </a-image-target>
     </a-scene>
 
     <script>
-      const video = document.querySelector('#video1');
-      const target0 = document.querySelector('#target0');
-      const unmuteBtn = document.querySelector('#unmuteBtn');
-      const iosHint = document.querySelector('#iosHint');
-      const closeHint = document.querySelector('#closeHint');
+      const video = document.querySelector("#meu-video");
+      const scene = document.querySelector("a-scene");
 
-      // iOS costuma bloquear autoplay com áudio; começamos mudo.
-      video.muted = true;
-
-      // Dicas: quando MindAR estiver pronto / erro de câmera
-      const sceneEl = document.querySelector('a-scene');
-      sceneEl.addEventListener('arReady', () => {
-        // oculta dica de permissão se aparecida
-        iosHint.style.display = 'none';
-      });
-      sceneEl.addEventListener('arError', () => {
-        iosHint.style.display = 'grid';
-      });
-      closeHint?.addEventListener('click', () => iosHint.style.display = 'none');
-
-      // Só toca quando o alvo é encontrado; pausa quando perder
-      target0.addEventListener('targetFound', async () => {
+      scene.addEventListener("targetFound", async () => {
         try {
           await video.play();
-        } catch (e) {
-          // Se o navegador bloquear, mostra botão para o usuário iniciar
-          unmuteBtn.style.display = 'inline-block';
-          unmuteBtn.textContent = '▶️ Tocar vídeo';
+        } catch (err) {
+          // Se o navegador bloquear o áudio, mostra um botão para ativar
+          const btn = document.createElement("button");
+          btn.innerText = "Ativar Som";
+          btn.style.position = "absolute";
+          btn.style.top = "50%";
+          btn.style.left = "50%";
+          btn.style.transform = "translate(-50%, -50%)";
+          btn.style.fontSize = "22px";
+          btn.style.padding = "12px 24px";
+          btn.style.background = "#333";
+          btn.style.color = "#fff";
+          btn.style.border = "none";
+          btn.style.borderRadius = "8px";
+          btn.style.cursor = "pointer";
+          document.body.appendChild(btn);
+
+          btn.addEventListener("click", () => {
+            video.play();
+            btn.remove();
+          });
         }
       });
 
-      target0.addEventListener('targetLost', () => {
+      scene.addEventListener("targetLost", () => {
         video.pause();
-      });
-
-      // Botão para iniciar/desmutar o vídeo após gesto do usuário
-      unmuteBtn.addEventListener('click', async () => {
-        try {
-          await video.play();
-          video.muted = false; // ativa som após gesto
-          unmuteBtn.style.display = 'none';
-        } catch (e) {
-          console.warn('Falha ao iniciar vídeo:', e);
-        }
       });
     </script>
   </body>
