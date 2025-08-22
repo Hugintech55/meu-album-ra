@@ -3,28 +3,39 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Meu primeiro WebAR com MindAR</title>
+    <title>Meu WebAR com MindAR</title>
 
-    <!-- A-Frame e MindAR (versões fixas para estabilidade) -->
+    <!-- A-Frame e MindAR -->
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 
     <style>
-      body { margin: 0; overflow: hidden; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+      body { margin: 0; overflow: hidden; font-family: system-ui, sans-serif; background: #000; }
       #unmuteBtn {
-        position: fixed; z-index: 10; left: 12px; top: 12px; padding: 10px 14px; border: 0; border-radius: 10px;
-        background: rgba(0,0,0,.7); color: #fff; font-weight: 600; display: none; cursor: pointer;
+        position: fixed; z-index: 10; left: 12px; top: 12px;
+        padding: 10px 14px; border: 0; border-radius: 10px;
+        background: rgba(0,0,0,.7); color: #fff; font-weight: 600;
+        display: none; cursor: pointer;
       }
-      #tips { position: fixed; z-index: 10; right: 12px; top: 12px; color: #fff; background: rgba(0,0,0,.35); padding: 8px 12px; border-radius: 10px; font-size: 14px; }
-      .hidden { display: none; }
-      /* Opcional: alerta de permissão de câmera no iOS */
-      #iosHint { position: fixed; inset: 0; display: none; place-items: center; background: rgba(0,0,0,.65); color: #fff; z-index: 20; }
-      #iosHint .card { background:#111; padding:20px; border-radius:12px; max-width: 320px; text-align:center; }
+      #tips {
+        position: fixed; z-index: 10; right: 12px; top: 12px;
+        color: #fff; background: rgba(0,0,0,.35);
+        padding: 8px 12px; border-radius: 10px; font-size: 14px;
+      }
+      #iosHint {
+        position: fixed; inset: 0; display: none;
+        place-items: center; background: rgba(0,0,0,.65);
+        color: #fff; z-index: 20;
+      }
+      #iosHint .card {
+        background:#111; padding:20px; border-radius:12px;
+        max-width: 320px; text-align:center;
+      }
     </style>
   </head>
   <body>
-    <button id="unmuteBtn">▶️ Ativar som</button>
-    <div id="tips">Aponte para a foto‑gatilho</div>
+    <button id="unmuteBtn">▶️ Ativar Som</button>
+    <div id="tips">Aponte para a foto-gatilho</div>
     <div id="iosHint"><div class="card">
       <h3>Permita acesso à câmera</h3>
       <p>Se nada aparecer, toque em “Permitir” para liberar a câmera.</p>
@@ -40,24 +51,16 @@
       device-orientation-permission-ui="enabled: false">
 
       <a-assets>
-        <!-- Seu vídeo. Coloque em assets/video.mp4 -->
         <video id="video1" src="assets/video.mp4" preload="auto" webkit-playsinline playsinline crossorigin="anonymous"></video>
-        <!-- Opcional: uma imagem para testar como overlay
-        <img id="overlay" src="assets/overlay.png" />-->
       </a-assets>
 
       <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-      <!-- Alvo 0: quando a imagem for reconhecida, mostramos o vídeo em cima -->
+      <!-- Alvo principal -->
       <a-entity id="target0" mindar-image-target="targetIndex: 0">
-        <!-- Ajuste width/height para caber na sua foto. 1 x 0.5625 é ~16:9 -->
-        <a-video id="videoPlane" src="#video1" position="0 0 0" rotation="0 0 0" width="1" height="0.5625"></a-video>
+        <!-- Ajustado para proporção vertical (480x864) -->
+        <a-video id="videoPlane" src="#video1" position="0 0 0" rotation="0 0 0" width="1.5" height="2.7"></a-video>
       </a-entity>
-
-      <!-- Exemplo para um segundo alvo no mesmo arquivo .mind (descomente e use targetIndex: 1)
-      <a-entity id="target1" mindar-image-target="targetIndex: 1">
-        <a-plane src="#overlay" position="0 0 0" width="1" height="1"></a-plane>
-      </a-entity>-->
     </a-scene>
 
     <script>
@@ -66,46 +69,33 @@
       const unmuteBtn = document.querySelector('#unmuteBtn');
       const iosHint = document.querySelector('#iosHint');
       const closeHint = document.querySelector('#closeHint');
+      const sceneEl = document.querySelector('a-scene');
 
-      // iOS costuma bloquear autoplay com áudio; começamos mudo.
+      // Inicialmente mutado (autoplay com áudio é bloqueado)
       video.muted = true;
 
-      // Dicas: quando MindAR estiver pronto / erro de câmera
-      const sceneEl = document.querySelector('a-scene');
-      sceneEl.addEventListener('arReady', () => {
-        // oculta dica de permissão se aparecida
-        iosHint.style.display = 'none';
-      });
-      sceneEl.addEventListener('arError', () => {
-        iosHint.style.display = 'grid';
-      });
+      sceneEl.addEventListener('arReady', () => iosHint.style.display = 'none');
+      sceneEl.addEventListener('arError', () => iosHint.style.display = 'grid');
       closeHint?.addEventListener('click', () => iosHint.style.display = 'none');
 
-      // Só toca quando o alvo é encontrado; pausa quando perder
+      // Quando encontrar a imagem, tenta iniciar o vídeo
       target0.addEventListener('targetFound', async () => {
         try {
           await video.play();
+          // Se conseguiu tocar, tira o mute automaticamente
+          video.muted = false;
         } catch (e) {
-          // Se o navegador bloquear, mostra botão para o usuário iniciar
+          // Se o navegador bloquear, mostra botão
           unmuteBtn.style.display = 'inline-block';
-          unmuteBtn.textContent = '▶️ Tocar vídeo';
         }
       });
 
-      target0.addEventListener('targetLost', () => {
-        video.pause();
-      });
+      // Quando perder a imagem, pausa
+      target0.addEventListener('targetLost', () => video.pause());
 
-      // Botão para iniciar/desmutar o vídeo após gesto do usuário
+      // Botão para ativar som manualmente se necessário
       unmuteBtn.addEventListener('click', async () => {
         try {
+          video.muted = false;
           await video.play();
-          video.muted = false; // ativa som após gesto
-          unmuteBtn.style.display = 'none';
-        } catch (e) {
-          console.warn('Falha ao iniciar vídeo:', e);
-        }
-      });
-    </script>
-  </body>
-</html>
+          unmuteBtn.styl
